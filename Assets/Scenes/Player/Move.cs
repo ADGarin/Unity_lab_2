@@ -22,7 +22,6 @@ public class Move : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
     void Update()
     {
         var state = GetComponent<State>();
@@ -31,13 +30,19 @@ public class Move : MonoBehaviour
             return;
         }
 
-        Vector3 curMovement = transform.position;
+        var realSpeed = speed;
 
-        float deltaX = Input.GetAxis("Horizontal") * speed;
-        float deltaZ = Input.GetAxis("Vertical") * speed;
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            // RUN
+            realSpeed *= 2;
+        }
+
+        float deltaX = Input.GetAxis("Horizontal") * realSpeed;
+        float deltaZ = Input.GetAxis("Vertical") * realSpeed;
 
         Vector3 movement = new Vector3(deltaX, 0, deltaZ);
-        movement = Vector3.ClampMagnitude(movement, speed);
+        movement = Vector3.ClampMagnitude(movement, realSpeed);
         movement *= Time.deltaTime;
         movement = transform.TransformDirection(movement);
 

@@ -3,7 +3,7 @@ using System.Collections;
 
 public class Fireball : MonoBehaviour
 {
-    public float speed = 15.0f;
+    public float speed = 20.0f;
     public int damage = 1;
     void Update()
     {

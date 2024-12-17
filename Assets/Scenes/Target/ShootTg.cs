@@ -19,7 +19,7 @@ public class ShootTg : MonoBehaviour
 
     private IEnumerator DestroyFireball(GameObject fireball)
     {
-        yield return new WaitForSeconds(10f);
+        yield return new WaitForSeconds(5f);
         if (fireball != null) Destroy(fireball);
     }
 }

@@ -1,8 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using UnityEngine.UIElements;
-using static UnityEngine.GraphicsBuffer;
-using Unity.VisualScripting;
 
 public class Target : MonoBehaviour
 {
@@ -13,7 +10,10 @@ public class Target : MonoBehaviour
     public float minTurnAngle = 10.0f;
     public float maxTurnAngle = 110.0f;
 
-    //private bool _rotationCoroutine = false;
+    public float damage = 50.0f;
+
+    private Rigidbody _rb;
+    private GameObject _player;
 
     private enum State
     {
@@ -22,50 +22,22 @@ public class Target : MonoBehaviour
     }
     private State _state = State.Alive;
 
- 
+    private void Start()
+    {
+        _rb = GetComponent<Rigidbody>();
+    }
+
+
     void Update()
     {
         if (_state == State.Die) return;
 
         transform.Translate(0, 0, speed * Time.deltaTime);
-
-        //Debug.Log(GetComponent<Rigidbody>().angularVelocity);
-        //if (Mathf.Abs(GetComponent<Rigidbody>().angularVelocity.y) > 0.01f) return;
-
-        RaycastHit hit;
-        if (observeDirection(transform.forward, 1.75f, out hit) && isPlayer(hit))
-        {
-            //var toPosition = (hit.transform.position - transform.position).normalized;
-            //var fromPosition = transform.forward;
-            //toPosition.y = fromPosition.y = 0;
-            //float angleToPosition = Vector3.Angle(fromPosition, toPosition);
-
-            //var targetRotation = Quaternion.LookRotation(hit.transform.forward - transform.forward);
-            //transform.Rotate(targetRotation.eulerAngles);//Quaternion.RotateTowards(transform.rotation, targetRotation, speed * Time.smoothDeltaTime);
-
-            //transform.Rotate(0, -angleToPosition, 0);
-            //Debug.Log($"Find player {toPosition}:{fromPosition}-{angleToPosition}");
-            //var targetRotation = Quaternion.LookRotation(hit.transform.position - transform.position);
-            //transform.rotation = targetRotation;//Quaternion.RotateTowards(transform.rotation,forward targetRotation, speed * Time.smoothDeltaTime);
-            //transform.LookAt(hit.point);
-
-            var hitPos = new Vector3(hit.transform.position.x, 0, hit.transform.position.z);
-            var selfPos = new Vector3(transform.position.x, 0, transform.position.z);
-
-            var qTo = Quaternion.LookRotation(hitPos - selfPos);
-            qTo = Quaternion.Slerp(transform.rotation, qTo, 10 * Time.deltaTime);
-            GetComponent<Rigidbody>().MoveRotation(qTo);
-
-            var shoot = gameObject.GetComponent<ShootTg>();
-            if (shoot != null)
-            {
-                shoot.Shoot();
-            }
-     
-            return;
-        }
+        //_rb.MovePosition(transform.position +
+        //    transform.forward * speed * Time.fixedDeltaTime);
 
         bool needTurn = false;
+        RaycastHit hit;
         if (observeDirection(transform.forward, 0.75f, out hit))
         {
             needTurn = !isOwnFireball(hit) && (isFireball(hit) || hit.distance < obstacleRange);
@@ -84,7 +56,6 @@ public class Target : MonoBehaviour
 
         if (needTurn)
         {
-            //Debug.Log("Motion Tuen");
             float turnRangeMiddle = maxTurnAngle - minTurnAngle;
             float angle = Random.Range(0, turnRangeMiddle * 2);
             if (angle <= turnRangeMiddle)
@@ -99,37 +70,61 @@ public class Target : MonoBehaviour
                 angle += minTurnAngle;
             }
 
-            //Quaternion curRotation = transform.rotation;
+            //Vector3 rotation = Vector3.up * angle;
+            //Quaternion angleRot = Quaternion.Euler(rotation * Time.fixedDeltaTime);
+            //_rb.MoveRotation(_rb.rotation * angleRot);
+
+            //Quaternion curRotation = _rb.rotation;
             //Quaternion newRotation = Quaternion.Euler(
             //    curRotation.eulerAngles.x,
             //    curRotation.eulerAngles.y + angle,
             //    curRotation.eulerAngles.z
             //);
 
-            //newRotation = Quaternion.Slerp(transform.rotation, newRotation, 10 * Time.deltaTime);
-            //GetComponent<Rigidbody>().MoveRotation(newRotation);
-            //transform.rotation = Quaternion.Lerp(curRotation, newRotation, rotSpeed * Time.deltaTime);
-
-            //_rotationCoroutine = true;
-            //StartCoroutine(Rotate(newRotation));
+            //_rb.MoveRotation(newRotation);
 
             transform.Rotate(0, angle, 0);
         }
+        else
+        {
+            if (observeDirection(transform.forward, 1.75f, out hit) && isPlayer(hit))
+            {
+                _player = hit.transform.gameObject;
+            }
+
+            if (_player != null)
+            {
+                rotateAndShoot(_player);
+                return;
+            }
+        }
     }
 
-    private IEnumerator Rotate(Quaternion rotation)
+    void OnCollisionEnter(Collision collision)
     {
-        while (transform.rotation != rotation)
+        var target = collision.gameObject.GetComponent<IHealth>();
+        if (target != null)
         {
-            var newRotation = Quaternion.RotateTowards(transform.rotation, rotation, rotSpeed * Time.deltaTime);
-
-            transform.rotation = newRotation;
-
-            yield return null;
+            target.Damage(damage);
         }
 
-        //_rotationCoroutine = false;
+        var fireboll = collision.gameObject.GetComponent<Fireball>();
+        if (fireboll != null && _player == null)
+        {
+            Collider[] overlappedColliders = Physics.OverlapSphere(transform.position, 20000f);
+            foreach (Collider collider in overlappedColliders)
+            {
+                var gameObject = collider.gameObject;
+                var player = gameObject.GetComponent<IHealth>();
+                if (player != null)
+                {
+                    _player = gameObject;
+                    break;
+                }
+            }
+        }
     }
+
     public void ReactToHit()
     {
         StartCoroutine(Damage());
@@ -148,11 +143,26 @@ public class Target : MonoBehaviour
             {
                 rb.mass /= 2;
             }
-        } 
+        }
         else
         {
-            //Destroy(this.gameObject);
             _state = State.Die;
+        }
+    }
+
+    private void rotateAndShoot(GameObject player)
+    {
+        var hitPos = new Vector3(player.transform.position.x, 0, player.transform.position.z);
+        var selfPos = new Vector3(transform.position.x, 0, transform.position.z);
+
+        var qTo = Quaternion.LookRotation(hitPos - selfPos);
+        qTo = Quaternion.Slerp(transform.rotation, qTo, 10 * Time.deltaTime);
+        _rb.MoveRotation(qTo);
+
+        var shoot = gameObject.GetComponent<ShootTg>();
+        if (shoot != null)
+        {
+            shoot.Shoot();
         }
     }
 
@@ -170,7 +180,7 @@ public class Target : MonoBehaviour
     private bool isPlayer(RaycastHit hit)
     {
         GameObject obj = hit.transform.gameObject;
-        return obj != null && obj.GetComponent<IHeath>() != null;
+        return obj != null && obj.GetComponent<IHealth>() != null;
     }
 
     private bool observeDirection(Vector3 direction, float radius, out RaycastHit hit)

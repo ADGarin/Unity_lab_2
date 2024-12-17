@@ -1,4 +1,4 @@
-public interface IHeath
+public interface IHealth
 {
     void Damage(float damage);
 }

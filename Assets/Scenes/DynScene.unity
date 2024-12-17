@@ -156,10 +156,10 @@ MonoBehaviour:
   turnLeftPrefab: {fileID: 8987144211603241619, guid: 5e12f35f149ab97419ece436704b33dc, type: 3}
   playerPrefab: {fileID: 6074861838522899251, guid: c537f19b896071042856d014f3f46c69, type: 3}
   targetPrefab: {fileID: 2478629763025529123, guid: 24586a2e54b10b04ebd70e83d7fb3084, type: 3}
-  StageCount: 3
-  SegmentCount: 20
-  ForwardProbability: 0.5
-  TargetProbability: 0.2
+  StageCount: 5
+  StartSegmentCount: 6
+  ForwardProbability: 0.4
+  StartTargetProbability: 0.3
 --- !u!4 &329997096
 Transform:
   m_ObjectHideFlags: 0
